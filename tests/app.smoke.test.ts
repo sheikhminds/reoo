@@ -243,6 +243,36 @@ describe('app smoke test', () => {
     expect(layer?.opacity).toBeCloseTo(0.5, 1);
   });
 
+  it('rotates and flips the document', () => {
+    const { editor } = app;
+    const before = { w: editor.doc.width, h: editor.doc.height };
+
+    editor.rotateDocument(1);
+    expect(editor.doc.width).toBe(before.h);
+    expect(editor.doc.height).toBe(before.w);
+
+    editor.rotateDocument(3);
+    expect(editor.doc.width).toBe(before.w);
+    expect(editor.doc.height).toBe(before.h);
+
+    editor.flipDocument(true);
+    editor.flipDocument(false);
+    expect(editor.doc.width).toBe(before.w);
+    expect(editor.doc.height).toBe(before.h);
+
+    // Transforms are undoable like any other edit.
+    editor.undo();
+    editor.redo();
+    expect(editor.doc.width).toBe(before.w);
+  });
+
+  it('drops the selection when the document is transformed', () => {
+    const { editor } = app;
+    editor.selectAll();
+    editor.rotateDocument(2);
+    expect(editor.selection).toBeNull();
+  });
+
   it('reports no console errors while doing all of the above', () => {
     expect(errors).toEqual([]);
   });
