@@ -52,6 +52,7 @@ No backend. No account. No uploads. No tracking. MIT licensed.
 - Marching-ants selection overlay, checkerboard transparency, zoom and pan
 - Keyboard-first workflow, dark UI, responsive layout down to phone width
 - Installable as an app (PWA) and works with no network after the first load
+- Autosave for crash recovery: if the tab dies with unsaved work, the next visit offers to restore every layer
 
 ## Keyboard shortcuts
 
@@ -141,6 +142,23 @@ tests exercise — no browser required.
 Reoo has no server component and no analytics. Files you open are read with the
 browser `File` API and stay in memory; exports are generated locally as blobs.
 There is nothing to send anywhere.
+
+The only thing Reoo persists is a crash-recovery snapshot in your own browser
+storage (see below). It never leaves the device and is deleted as soon as you
+save your project.
+
+## Crash recovery
+
+While a document has unsaved changes, Reoo writes a recovery snapshot to
+IndexedDB every 20 seconds. If the tab is closed, the browser crashes, or the
+machine loses power, the next visit offers to restore the work instead of
+starting over.
+
+- Snapshots older than 12 hours are ignored
+- Saving the project, opening another file, or choosing "Discard" clears it
+- If IndexedDB is unavailable (private mode), recovery silently falls back to
+  memory, which only survives a reload of the same tab
+- File > Save still downloads a `.reoo` file; autosave is not a substitute for it
 
 ## Offline use
 
