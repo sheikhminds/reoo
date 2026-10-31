@@ -81,6 +81,13 @@ describe('flood fill', () => {
     ).toBe(2);
   });
 
+  it('reports no change when the region already holds the fill color', () => {
+    const data = solid(2, 2, 10, 20, 30);
+    expect(
+      floodFill(data, 2, 2, 0, 0, { color: { r: 10, g: 20, b: 30, a: 255 }, tolerance: 0 }),
+    ).toBe(0);
+  });
+
   it('honors the selection mask', () => {
     const data = solid(2, 2, 255, 255, 255);
     const mask = new Uint8Array([255, 255, 0, 0]);

@@ -17,11 +17,62 @@ class FakeImageData {
   }
 }
 
-function makeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+type FakeBuffer = { data: Uint8ClampedArray; w: number; h: number };
+
+function makeContext(
+  canvas: HTMLCanvasElement,
+  bufferFor: (canvas: HTMLCanvasElement) => FakeBuffer,
+): CanvasRenderingContext2D {
   const ctx: Record<string, unknown> = {
     canvas,
-    getImageData: (_x: number, _y: number, w: number, h: number) =>
-      new FakeImageData(new Uint8ClampedArray(Math.max(1, w * h * 4)), w, h),
+    getImageData: (x: number, y: number, w: number, h: number) => {
+      const source = bufferFor(canvas);
+      const out = new FakeImageData(new Uint8ClampedArray(Math.max(1, w * h * 4)), w, h);
+      for (let row = 0; row < h; row++) {
+        const sy = y + row;
+        if (sy < 0 || sy >= source.h) continue;
+        for (let col = 0; col < w; col++) {
+          const sx = x + col;
+          if (sx < 0 || sx >= source.w) continue;
+          const si = (sy * source.w + sx) * 4;
+          const di = (row * w + col) * 4;
+          out.data[di] = source.data[si];
+          out.data[di + 1] = source.data[si + 1];
+          out.data[di + 2] = source.data[si + 2];
+          out.data[di + 3] = source.data[si + 3];
+        }
+      }
+      return out;
+    },
+    putImageData: (image: FakeImageData, x: number, y: number) => {
+      const target = bufferFor(canvas);
+      for (let row = 0; row < image.height; row++) {
+        const ty = y + row;
+        if (ty < 0 || ty >= target.h) continue;
+        for (let col = 0; col < image.width; col++) {
+          const tx = x + col;
+          if (tx < 0 || tx >= target.w) continue;
+          const si = (row * image.width + col) * 4;
+          const di = (ty * target.w + tx) * 4;
+          target.data[di] = image.data[si];
+          target.data[di + 1] = image.data[si + 1];
+          target.data[di + 2] = image.data[si + 2];
+          target.data[di + 3] = image.data[si + 3];
+        }
+      }
+    },
+    clearRect: (x: number, y: number, w: number, h: number) => {
+      const target = bufferFor(canvas);
+      for (let row = 0; row < h; row++) {
+        const ty = y + row;
+        if (ty < 0 || ty >= target.h) continue;
+        for (let col = 0; col < w; col++) {
+          const tx = x + col;
+          if (tx < 0 || tx >= target.w) continue;
+          target.data.fill(0, (ty * target.w + tx) * 4, (ty * target.w + tx) * 4 + 4);
+        }
+      }
+    },
     createImageData: (w: number, h: number) =>
       new FakeImageData(new Uint8ClampedArray(Math.max(1, w * h * 4)), w, h),
     createLinearGradient: () => ({ addColorStop: () => {} }),
@@ -46,11 +97,24 @@ function makeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
 function installCanvasStubs(): void {
   const proto = window.HTMLCanvasElement.prototype as unknown as Record<string, unknown>;
   const contexts = new WeakMap<HTMLCanvasElement, CanvasRenderingContext2D>();
+  const buffers = new WeakMap<HTMLCanvasElement, FakeBuffer>();
+
+  const bufferFor = (canvas: HTMLCanvasElement): FakeBuffer => {
+    const w = Math.max(1, canvas.width);
+    const h = Math.max(1, canvas.height);
+    let buffer = buffers.get(canvas);
+    if (!buffer || buffer.w !== w || buffer.h !== h) {
+      buffer = { data: new Uint8ClampedArray(w * h * 4), w, h };
+      buffers.set(canvas, buffer);
+    }
+    return buffer;
+  };
+
   proto.getContext = function (this: HTMLCanvasElement, kind: string) {
     if (kind !== '2d') return null;
     let ctx = contexts.get(this);
     if (!ctx) {
-      ctx = makeContext(this);
+      ctx = makeContext(this, bufferFor);
       contexts.set(this, ctx);
     }
     return ctx;
@@ -362,6 +426,48 @@ describe('app smoke test', () => {
     expect(second.editor.doc.layers.length).toBe(app.editor.doc.layers.length);
     second.editor.stopAutosave();
     secondRoot.remove();
+  });
+
+  it('records undo only when a bucket fill actually changes pixels', async () => {
+    const { editor } = app;
+    const { createTools } = await import('../src/tools');
+    const { context2d } = await import('../src/core/canvas');
+
+    // Fresh document so the seed point is inside the canvas and history starts empty.
+    editor.newDocument(16, 16, '#ffffff', 'fill test');
+    const tools = createTools({ editor, beginText: () => {} });
+    const pointer = (x: number, y: number) => ({
+      x,
+      y,
+      screenX: x,
+      screenY: y,
+      pressure: 1,
+      pen: false,
+      alt: false,
+      shift: false,
+      ctrl: false,
+    });
+
+    editor.setTool('fill');
+    editor.options.fill = { tolerance: 0, contiguous: true };
+    editor.setPrimary('#ff0000');
+    expect(editor.history.undoDepth).toBe(0);
+
+    tools.fill.down(pointer(4, 4));
+    expect(editor.history.undoDepth).toBe(1);
+
+    const layer = editor.activeLayer;
+    expect(layer).not.toBeNull();
+    const pixel = context2d(layer!.canvas, true).getImageData(4, 4, 1, 1).data;
+    expect([pixel[0], pixel[1], pixel[2], pixel[3]]).toEqual([255, 0, 0, 255]);
+
+    // Same seed, same color: the pixels already match, so no undo step is burned.
+    tools.fill.down(pointer(4, 4));
+    expect(editor.history.undoDepth).toBe(1);
+
+    // A click outside the canvas changes nothing and is not recorded either.
+    tools.fill.down(pointer(40, 40));
+    expect(editor.history.undoDepth).toBe(1);
   });
 
   it('reports no console errors while doing all of the above', () => {
