@@ -50,6 +50,7 @@ No backend. No account. No uploads. No tracking. MIT licensed.
 - Cut, copy, paste, and delete constrained by the active selection
 - Marching-ants selection overlay, checkerboard transparency, zoom and pan
 - Keyboard-first workflow, dark UI, responsive layout down to phone width
+- Installable as an app (PWA) and works with no network after the first load
 
 ## Keyboard shortcuts
 
@@ -139,6 +140,18 @@ tests exercise — no browser required.
 Reoo has no server component and no analytics. Files you open are read with the
 browser `File` API and stay in memory; exports are generated locally as blobs.
 There is nothing to send anywhere.
+
+## Offline use
+
+The hosted build registers a service worker, so after one visit the editor keeps
+working with the network off — on a plane, on a locked-down machine, or when the
+site is unreachable. Hashed build assets are cached indefinitely; the HTML shell
+is fetched from the network first and falls back to the cache. Browsers offer
+"Install app" for the same reason, which gives you a standalone window instead of
+a tab.
+
+If a new release looks stale, reload once while online — the shell updates on the
+next navigation.
 
 ## Contributing
 
