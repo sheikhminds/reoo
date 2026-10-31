@@ -1,0 +1,24 @@
+{
+  "name": "reoo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reoo — an open-source, browser-based graphics editor. Free alternative to Photopea and Photoshop.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "ag-psd": "^34.1.0"
+  },
+  "devDependencies": {
+    "happy-dom": "^21.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.4"
+  }
+}
