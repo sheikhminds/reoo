@@ -252,6 +252,49 @@ export class EditorDocument {
     this.invalidate();
   }
 
+  /** Mirror every layer in place, keeping the document size. */
+  flip(horizontal: boolean): void {
+    for (const layer of this.layers) {
+      const next = createCanvas(this.width, this.height);
+      const ctx = context2d(next);
+      ctx.translate(horizontal ? this.width : 0, horizontal ? 0 : this.height);
+      ctx.scale(horizontal ? -1 : 1, horizontal ? 1 : -1);
+      ctx.drawImage(layer.canvas, 0, 0);
+      layer.canvas = next;
+    }
+    this.invalidate();
+  }
+
+  /** Rotate every layer by 90° turns (1 = clockwise). Odd turns swap the axes. */
+  rotate(turns: number): void {
+    const t = ((turns % 4) + 4) % 4;
+    if (t === 0) return;
+    const w = this.width;
+    const h = this.height;
+    const nw = t === 2 ? w : h;
+    const nh = t === 2 ? h : w;
+    for (const layer of this.layers) {
+      const next = createCanvas(nw, nh);
+      const ctx = context2d(next);
+      if (t === 1) {
+        ctx.translate(nw, 0);
+        ctx.rotate(Math.PI / 2);
+      } else if (t === 2) {
+        ctx.translate(nw, nh);
+        ctx.rotate(Math.PI);
+      } else {
+        ctx.translate(0, nh);
+        ctx.rotate(-Math.PI / 2);
+      }
+      ctx.drawImage(layer.canvas, 0, 0);
+      layer.canvas = next;
+    }
+    this.width = nw;
+    this.height = nh;
+    this.compositeCanvas = null;
+    this.invalidate();
+  }
+
   dispose(): void {
     this.compositeCanvas = null;
     this.layers = [];

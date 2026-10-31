@@ -22,7 +22,8 @@ No backend. No account. No uploads. No tracking. MIT licensed.
 - New document with custom size and background, or transparent canvas
 - Open PNG / JPEG / WebP / GIF / BMP / AVIF and PSD / PSB files
 - Place an image as a new layer, drag and drop files onto the canvas
-- Resize image, crop to selection, flatten image
+- Resize image, crop to selection, rotate 90° left/right or 180°, flip horizontally/vertically
+- Flatten image
 - Save and reopen projects as `.reoo` (JSON with embedded layer PNGs)
 - Export PNG, JPEG, or WebP at 10–400% scale with adjustable quality
 

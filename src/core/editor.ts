@@ -585,6 +585,36 @@ export class Editor {
     this.toast(`Cropped to ${this.doc.width} × ${this.doc.height}`);
   }
 
+  flipDocument(horizontal: boolean): void {
+    this.beginUndo();
+    this.doc.flip(horizontal);
+    this.dropSelection();
+    this.changed();
+    this.toast(horizontal ? 'Flipped horizontally' : 'Flipped vertically');
+  }
+
+  rotateDocument(turns: number): void {
+    const t = ((turns % 4) + 4) % 4;
+    if (t === 0) return;
+    this.beginUndo();
+    this.doc.rotate(t);
+    this.dropSelection();
+    this.changed();
+    const label = t === 2 ? 'Rotated 180°' : t === 1 ? 'Rotated 90° right' : 'Rotated 90° left';
+    this.toast(label);
+  }
+
+  /** Selections are document-space geometry, so transforms clear them. */
+  private dropSelection(): void {
+    if (!this.selection) {
+      this.changed();
+      return;
+    }
+    this.selection = null;
+    this.maskCache = null;
+    this.emit('selection');
+  }
+
   // ---- files --------------------------------------------------------------
 
   saveProject(): void {
