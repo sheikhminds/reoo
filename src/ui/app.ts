@@ -114,7 +114,7 @@ const SHORTCUTS_HTML = `
     <tr><td>Space</td><td>Pan temporarily</td></tr>
     <tr><td>Ctrl+Z / Ctrl+Shift+Z</td><td>Undo / redo</td></tr>
     <tr><td>Ctrl+A / Ctrl+D</td><td>Select all / deselect</td></tr>
-    <tr><td>Ctrl+C / X / V</td><td>Copy / cut / paste</td></tr>
+    <tr><td>Ctrl+C / X / V</td><td>Copy / cut / paste (Ctrl+V also accepts images from other apps)</td></tr>
     <tr><td>Delete</td><td>Clear selection</td></tr>
     <tr><td>Ctrl+S</td><td>Save project (.reoo)</td></tr>
     <tr><td>Ctrl+O / Ctrl+Shift+O</td><td>Open / place image</td></tr>
@@ -756,6 +756,31 @@ export class App {
       event.preventDefault();
       event.returnValue = '';
     });
+
+    this.bindPasteImage();
+  }
+
+  /** Paste an image copied from another app straight in as a new layer. */
+  private bindPasteImage(): void {
+    window.addEventListener('paste', (event) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target && (target.closest('input, textarea, select') || target.isContentEditable)) return;
+      if (document.body.classList.contains('modal-open')) return;
+
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      let file: File | null = null;
+      for (const item of items) {
+        if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+        file = item.getAsFile();
+        if (file) break;
+      }
+      if (!file) return; // No image on the clipboard: leave the internal paste alone.
+
+      event.preventDefault();
+      void this.editor.placeImage(file);
+    });
   }
 
   private fileInputs: { open: HTMLInputElement; place: HTMLInputElement } | null = null;
@@ -905,6 +930,9 @@ export class App {
         this.editor.cutSelection();
         return true;
       case 'v':
+        // Without an internal copy, let the browser fire its native paste event
+        // so an image from another app can be placed as a layer.
+        if (!this.editor.hasClipboard) return false;
         this.editor.paste();
         return true;
       case 'j':

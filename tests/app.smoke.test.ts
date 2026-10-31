@@ -76,6 +76,20 @@ function installCanvasStubs(): void {
   });
 
   const g = globalThis as unknown as Record<string, unknown>;
+  // Image decoding is not implemented in the simulated DOM; resolve immediately
+  // with fixed intrinsic dimensions so image workflows can be exercised.
+  class FakeImage {
+    naturalWidth = 64;
+    naturalHeight = 48;
+    width = 64;
+    height = 48;
+    onload: (() => void) | null = null;
+    onerror: ((error?: unknown) => void) | null = null;
+    set src(_value: string) {
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+  g.Image = FakeImage;
   g.Path2D ??= class {
     moveTo() {}
     lineTo() {}
@@ -271,6 +285,24 @@ describe('app smoke test', () => {
     editor.selectAll();
     editor.rotateDocument(2);
     expect(editor.selection).toBeNull();
+  });
+
+  it('places an image pasted from another app as a new layer', async () => {
+    const { editor } = app;
+    const before = editor.doc.layers.length;
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'pasted.png', { type: 'image/png' });
+
+    const event = new Event('paste', { bubbles: true });
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
+      },
+    });
+    window.dispatchEvent(event);
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(editor.doc.layers.length).toBe(before + 1);
+    expect(editor.doc.layers[editor.doc.layers.length - 1].name).toContain('pasted');
   });
 
   it('reports no console errors while doing all of the above', () => {
