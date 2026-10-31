@@ -39,7 +39,7 @@ No backend. No account. No uploads. No tracking. MIT licensed.
 - Linear and radial gradients
 - Rectangle, ellipse, and line shapes with fill, stroke, and corner radius
 - Text with font family, size, weight, style, and alignment
-- Eyedropper, crop, hand, zoom
+- Eyedropper (samples while dragging), crop, hand, zoom
 
 **Filters and adjustments**
 - Blur, Gaussian blur, sharpen, pixelate, add noise
