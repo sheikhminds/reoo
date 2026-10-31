@@ -67,6 +67,11 @@ export class Editor {
   private maskCache: { shape: SelectionShape; canvas: HTMLCanvasElement } | null = null;
   private clipboard: { canvas: HTMLCanvasElement; x: number; y: number } | null = null;
 
+  /** True when there is an internal copy to paste (a copied layer region). */
+  get hasClipboard(): boolean {
+    return this.clipboard !== null;
+  }
+
   constructor(doc?: EditorDocument) {
     this.doc = doc ?? new EditorDocument(1200, 800, '#ffffff');
   }

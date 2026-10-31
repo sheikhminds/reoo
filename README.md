@@ -21,7 +21,7 @@ No backend. No account. No uploads. No tracking. MIT licensed.
 **Documents**
 - New document with custom size and background, or transparent canvas
 - Open PNG / JPEG / WebP / GIF / BMP / AVIF and PSD / PSB files
-- Place an image as a new layer, drag and drop files onto the canvas
+- Place an image as a new layer, drag and drop files onto the canvas, or paste an image copied from another app
 - Resize image, crop to selection, rotate 90° left/right or 180°, flip horizontally/vertically
 - Flatten image
 - Save and reopen projects as `.reoo` (JSON with embedded layer PNGs)
@@ -68,7 +68,7 @@ No backend. No account. No uploads. No tracking. MIT licensed.
 | `Space` (hold) | Temporary pan |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `Ctrl+A` / `Ctrl+D` | Select all / deselect |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / cut / paste (native paste places images too) |
 | `Delete` | Clear selection contents |
 | `Ctrl+S` | Save project (`.reoo`) |
 | `Ctrl+O` / `Ctrl+Shift+O` | Open / place image |
