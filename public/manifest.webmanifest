@@ -1,0 +1,27 @@
+{
+  "name": "Reoo — browser graphics editor",
+  "short_name": "Reoo",
+  "description": "A free, open-source graphics editor that runs entirely in your browser. Layers, selections, filters and PSD import/export without uploading a single file.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#15171c",
+  "theme_color": "#15171c",
+  "categories": ["graphics", "photo", "productivity"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
