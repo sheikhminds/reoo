@@ -22,9 +22,16 @@ export interface DialogOptions {
   description?: string;
   fields?: DialogField[];
   submitLabel?: string;
+  /** Label for the secondary button. Defaults to "Cancel". */
+  cancelLabel?: string;
   /** Trusted static HTML shown above the fields (or instead of them). */
   html?: string;
   onSubmit?: (values: Record<string, DialogValue>) => void;
+  /**
+   * Called when the secondary button is used. Escape and backdrop clicks only
+   * dismiss the dialog, so a destructive "discard" is never triggered by habit.
+   */
+  onCancel?: () => void;
 }
 
 let openCount = 0;
@@ -178,8 +185,11 @@ export function openDialog(options: DialogOptions): void {
     const cancel = document.createElement('button');
     cancel.className = 'btn';
     cancel.type = 'button';
-    cancel.textContent = 'Cancel';
-    cancel.addEventListener('click', () => close());
+    cancel.textContent = options.cancelLabel ?? 'Cancel';
+    cancel.addEventListener('click', () => {
+      close();
+      options.onCancel?.();
+    });
     const submit = document.createElement('button');
     submit.className = 'btn btn-primary';
     submit.type = 'submit';
@@ -216,8 +226,11 @@ export function openDialog(options: DialogOptions): void {
       const cancel = document.createElement('button');
       cancel.className = 'btn';
       cancel.type = 'button';
-      cancel.textContent = 'Cancel';
-      cancel.addEventListener('click', () => closeDialog());
+      cancel.textContent = options.cancelLabel ?? 'Cancel';
+      cancel.addEventListener('click', () => {
+        closeDialog();
+        options.onCancel?.();
+      });
       const submit = document.createElement('button');
       submit.className = 'btn btn-primary';
       submit.type = 'button';

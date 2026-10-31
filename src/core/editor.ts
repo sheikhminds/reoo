@@ -5,6 +5,13 @@
  */
 
 import { DEFAULT_TOOL_OPTIONS, type ToolId, type ToolOptions, type ViewState } from '../types';
+import {
+  AUTOSAVE_INTERVAL_MS,
+  clearAutosave,
+  createAutosaveStore,
+  writeAutosave,
+  type AutosaveStore,
+} from './autosave';
 import { context2d, copyCanvas, createCanvas } from './canvas';
 import { EditorDocument, type BlendMode, type Layer } from './document';
 import { blendWithMask } from './filters';
@@ -72,8 +79,15 @@ export class Editor {
     return this.clipboard !== null;
   }
 
-  constructor(doc?: EditorDocument) {
+  /** Crash recovery storage; injectable so tests can avoid IndexedDB. */
+  readonly autosaveStore: AutosaveStore;
+  private autosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private autosaveBusy = false;
+  lastAutosaveAt = 0;
+
+  constructor(doc?: EditorDocument, autosaveStore: AutosaveStore = createAutosaveStore()) {
     this.doc = doc ?? new EditorDocument(1200, 800, '#ffffff');
+    this.autosaveStore = autosaveStore;
   }
 
   // ---- events -------------------------------------------------------------
@@ -118,6 +132,7 @@ export class Editor {
     this.maskCache = null;
     this.history.clear();
     this.modified = false;
+    void clearAutosave(this.autosaveStore);
     this.emit('ui');
     this.emit('selection');
     this.emit('new-document');
@@ -131,6 +146,7 @@ export class Editor {
     this.maskCache = null;
     this.history.clear();
     this.modified = false;
+    void clearAutosave(this.autosaveStore);
     this.emit('ui');
     this.emit('selection');
     this.emit('new-document');
@@ -625,7 +641,45 @@ export class Editor {
   saveProject(): void {
     download(serializeProject(this.doc, this.name), `${sanitizeFilename(this.name)}.reoo`);
     this.modified = false;
+    void clearAutosave(this.autosaveStore);
     this.toast('Project saved');
+  }
+
+  // ---- crash recovery -----------------------------------------------------
+
+  /** Begin periodically stashing unsaved work for crash recovery. */
+  startAutosave(intervalMs = AUTOSAVE_INTERVAL_MS): void {
+    if (this.autosaveTimer !== null) return;
+    this.autosaveTimer = setInterval(() => {
+      void this.autosaveNow();
+    }, intervalMs);
+  }
+
+  stopAutosave(): void {
+    if (this.autosaveTimer === null) return;
+    clearInterval(this.autosaveTimer);
+    this.autosaveTimer = null;
+  }
+
+  /** Write a recovery snapshot when there is unsaved work. */
+  async autosaveNow(): Promise<boolean> {
+    if (this.autosaveBusy || !this.modified) return false;
+    this.autosaveBusy = true;
+    try {
+      const project = await serializeProject(this.doc, this.name).text();
+      const written = await writeAutosave(this.autosaveStore, this.name, project);
+      if (written) this.lastAutosaveAt = Date.now();
+      return written;
+    } catch {
+      return false;
+    } finally {
+      this.autosaveBusy = false;
+    }
+  }
+
+  /** Forget any stored recovery snapshot (used after a real save or open). */
+  discardAutosave(): void {
+    void clearAutosave(this.autosaveStore);
   }
 
   async exportImage(format: ExportFormat, quality = 0.92, scale = 1): Promise<void> {

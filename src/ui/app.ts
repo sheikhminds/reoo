@@ -1,8 +1,10 @@
 /** App shell: menus, toolbar, color, status bar, dialogs and shortcuts. */
 
 import { grayscale, hueSaturation, invert, levels, posterize, sepia, threshold, brightnessContrast } from '../core/adjustments';
+import { describeAge, readAutosave, type AutosaveStore } from '../core/autosave';
 import { Editor } from '../core/editor';
 import { addNoise, blur, gaussianBlur, pixelate, sharpen } from '../core/filters';
+import { deserializeProject } from '../core/io';
 import { selectionBounds } from '../core/selection';
 import type { ToolId } from '../types';
 import { openDialog } from './dialog';
@@ -125,14 +127,18 @@ const SHORTCUTS_HTML = `
 `;
 
 export class App {
-  readonly editor = new Editor();
+  readonly editor: Editor;
   private view: CanvasView;
   private optionsBar: OptionsBar;
   private shell: HTMLElement;
   private toastTimer: number | null = null;
   private openMenu: HTMLElement | null = null;
 
-  constructor(private readonly root: HTMLElement) {
+  /**
+   * @param autosaveStore override for crash-recovery storage (tests, embedding)
+   */
+  constructor(private readonly root: HTMLElement, autosaveStore?: AutosaveStore) {
+    this.editor = new Editor(undefined, autosaveStore);
     root.innerHTML = SHELL;
     this.shell = root.querySelector('.app-shell') as HTMLElement;
     this.view = new CanvasView(this.editor, this.must<HTMLElement>('#stage'));
@@ -160,6 +166,37 @@ export class App {
     this.updateStatus();
     this.updateColorPanel();
     setTimeout(() => this.showToast('Drop an image, or press File → Open to begin.'), 900);
+
+    this.editor.startAutosave();
+    void this.offerRestore();
+  }
+
+  /** Offer to reopen work that was lost when the tab closed unexpectedly. */
+  private async offerRestore(): Promise<void> {
+    const snapshot = await readAutosave(this.editor.autosaveStore);
+    if (!snapshot) return;
+
+    const age = describeAge(snapshot.savedAt);
+    openDialog({
+      title: 'Restore previous session?',
+      description: `Reoo found unsaved work from ${age}. Restoring brings back every layer exactly as you left it.`,
+      submitLabel: 'Restore',
+      cancelLabel: 'Discard',
+      onCancel: () => this.editor.discardAutosave(),
+      onSubmit: () => {
+        void (async () => {
+          try {
+            const { doc, name } = await deserializeProject(snapshot.project);
+            this.editor.loadDocument(doc, name);
+            this.editor.modified = true;
+            this.showToast('Session restored');
+          } catch {
+            this.editor.discardAutosave();
+            this.showToast('That recovery file could not be read');
+          }
+        })();
+      },
+    });
   }
 
   private must<T extends Element>(selector: string): T {

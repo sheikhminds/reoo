@@ -4,7 +4,7 @@
  * context. This is a wiring/regression test: it proves the modules load, the
  * UI mounts, and the main editor operations run without throwing.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 class FakeImageData {
   data: Uint8ClampedArray;
@@ -305,7 +305,70 @@ describe('app smoke test', () => {
     expect(editor.doc.layers[editor.doc.layers.length - 1].name).toContain('pasted');
   });
 
+  it('autosaves unsaved work and can restore it', async () => {
+    const { editor } = app;
+    const { readAutosave, clearAutosave } = await import('../src/core/autosave');
+    const { deserializeProject } = await import('../src/core/io');
+
+    await clearAutosave(editor.autosaveStore);
+    editor.addLayer();
+    expect(editor.modified).toBe(true);
+
+    expect(await editor.autosaveNow()).toBe(true);
+    const snapshot = await readAutosave(editor.autosaveStore);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.name).toBe(editor.name);
+
+    const { doc } = await deserializeProject(snapshot!.project);
+    expect(doc.width).toBe(editor.doc.width);
+    expect(doc.layers.length).toBe(editor.doc.layers.length);
+  });
+
+  it('does not autosave when nothing changed', async () => {
+    const { editor } = app;
+    editor.discardAutosave();
+    editor.modified = false;
+    expect(await editor.autosaveNow()).toBe(false);
+  });
+
+  it('offers to restore an autosaved session on boot', async () => {
+    const { createMemoryStore, writeAutosave } = await import('../src/core/autosave');
+    const { serializeProject } = await import('../src/core/io');
+
+    const store = createMemoryStore();
+    const project = await serializeProject(app.editor.doc, 'recovered project').text();
+    await writeAutosave(store, 'recovered project', project);
+
+    const secondRoot = document.createElement('div');
+    secondRoot.id = 'app-restore';
+    document.body.appendChild(secondRoot);
+
+    const { App } = await import('../src/ui/app');
+    const second = new App(secondRoot, store);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const modal = document.querySelector('.modal-backdrop .modal');
+    expect(modal).not.toBeNull();
+    expect(modal?.textContent).toContain('Restore previous session?');
+
+    const restore = Array.from(modal!.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Restore',
+    );
+    expect(restore).toBeDefined();
+    restore!.click();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(second.editor.name).toBe('recovered project');
+    expect(second.editor.doc.layers.length).toBe(app.editor.doc.layers.length);
+    second.editor.stopAutosave();
+    secondRoot.remove();
+  });
+
   it('reports no console errors while doing all of the above', () => {
     expect(errors).toEqual([]);
+  });
+
+  afterAll(() => {
+    app.editor.stopAutosave();
   });
 });
