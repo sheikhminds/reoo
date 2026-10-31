@@ -155,8 +155,10 @@ MIT. See [LICENSE](LICENSE).
 
 ## Support
 
-Reoo is free and has no paid tier. If it saves you time:
+Reoo is free, has no paid tier, no ads and no tracking. If it saves you time:
 
 - Star the repo so other people can find it
 - Report bugs and rough edges in [issues](https://github.com/sheikhminds/reoo/issues)
-- Sponsor development via [GitHub Sponsors](https://github.com/sponsors/sheikhminds)
+- Send a tip (any EVM chain) to `0xD8f7aA827a145bc8C40eEd5C1BB12BF5e720C6aa`
+
+Tips are optional and fund nothing but more time on the project.
