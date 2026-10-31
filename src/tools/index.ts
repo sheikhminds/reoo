@@ -258,7 +258,7 @@ function fillTool(editor: Editor): Tool {
       }
       const color = parseColor(editor.primary);
       const mask = editor.selectionMaskData();
-      editor.beginUndo();
+      const before = editor.capture();
       const ctx = context2d(layer.canvas, true);
       const image = ctx.getImageData(0, 0, editor.doc.width, editor.doc.height);
       const changedPixels = floodFill(image.data, editor.doc.width, editor.doc.height, p.x, p.y, {
@@ -268,6 +268,10 @@ function fillTool(editor: Editor): Tool {
         mask,
       });
       if (changedPixels > 0) {
+        // Only record history when the fill actually changed something, so a
+        // click on already-matching pixels does not eat an undo step.
+        editor.history.push(before);
+        editor.emit('ui');
         ctx.putImageData(image, 0, 0);
         editor.changed();
       } else {
@@ -504,6 +508,7 @@ function textTool(ctx: ToolContext): Tool {
 }
 
 function eyedropperTool(editor: Editor): Tool {
+  let sampling = false;
   const pick = (p: PointerInfo, target: 'primary' | 'secondary'): void => {
     const color = editor.pickColor(p.x, p.y);
     if (!color) return;
@@ -514,10 +519,19 @@ function eyedropperTool(editor: Editor): Tool {
     id: 'eyedropper',
     cursor: () => 'crosshair',
     down(p) {
+      sampling = true;
       pick(p, p.alt ? 'secondary' : 'primary');
     },
-    move() {},
-    up() {},
+    move(p) {
+      // Sampling while dragging matches every other editor.
+      if (sampling) pick(p, p.alt ? 'secondary' : 'primary');
+    },
+    up() {
+      sampling = false;
+    },
+    cancel() {
+      sampling = false;
+    },
   };
 }
 

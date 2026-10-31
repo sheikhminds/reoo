@@ -55,12 +55,22 @@ export function floodFill(
     );
   };
 
-  const write = (x: number, y: number): void => {
+  /** Writes the fill color and reports whether the pixel actually changed. */
+  const write = (x: number, y: number): boolean => {
     const i = (y * width + x) * 4;
+    if (
+      data[i] === color.r &&
+      data[i + 1] === color.g &&
+      data[i + 2] === color.b &&
+      data[i + 3] === color.a
+    ) {
+      return false;
+    }
     data[i] = color.r;
     data[i + 1] = color.g;
     data[i + 2] = color.b;
     data[i + 3] = color.a;
+    return true;
   };
 
   const visited = new Uint8Array(width * height);
@@ -72,8 +82,7 @@ export function floodFill(
         if (visited[y * width + x]) continue;
         if (!matches(x, y)) continue;
         visited[y * width + x] = 1;
-        write(x, y);
-        changed++;
+        if (write(x, y)) changed++;
       }
     }
     return changed;
@@ -95,8 +104,7 @@ export function floodFill(
 
     for (let i = left; i <= right; i++) {
       visited[row + i] = 1;
-      write(i, y);
-      changed++;
+      if (write(i, y)) changed++;
     }
 
     for (const ny of [y - 1, y + 1]) {
